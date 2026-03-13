@@ -1,0 +1,25 @@
+/* frontend/src/index.css */
+/* Reset base para pantalla OLED */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background-color: #000000;
+  /* Fuente base mínima de 1.2rem según requisito de accesibilidad */
+  font-size: 1.2rem;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-color: #000000;
+  color: #ffffff;
+  min-height: 100vh;
+}
+
+/* Scrollbar oscura para coherencia OLED */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #111; }
+::-webkit-scrollbar-thumb { background: #FFA500; border-radius: 3px; }
