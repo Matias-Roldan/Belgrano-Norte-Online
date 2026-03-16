@@ -10,6 +10,7 @@ import AdminEstaciones from './pages/AdminEstaciones';
 import AdminTrenes     from './pages/AdminTrenes';
 import AdminServicios  from './pages/AdminServicios';
 import QuienesSomos    from './pages/QuienesSomos';
+import Recorrido       from './pages/Recorrido';
 import api             from './api/belgrano';
 
 const T = {
@@ -102,7 +103,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Recorrido', ruta: '/recorrido',
+    label: 'Recorrido', ruta: '/Recorrido',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/>
@@ -436,17 +437,16 @@ export default function App() {
           <Route path="/tablero"          element={<Tablero/>}                              />
           <Route path="/planificar"       element={<Planificar/>}                           />
           <Route path="/avisos"           element={<Avisos/>}                               />
-          <Route path="/horarios"         element={<Proximamente titulo="Horarios"/>}       />
-          <Route path="/recorrido"        element={<Proximamente titulo="Recorrido"/>}      />
+          <Route path="/quienes-somos"    element={<QuienesSomos />}                        />
+          <Route path="/recorrido"        element={<Recorrido/>}                            />
           <Route path="/tarifa"           element={<Proximamente titulo="Tarifa"/>}         />
-          <Route path="/estaciones"       element={<Proximamente titulo="Estaciones"/>}     />
           <Route path="/contacto"         element={<Proximamente titulo="Contacto"/>}       />
           <Route path="/panel"            element={<PanelControl/>}                         />
           <Route path="/panel/avisos"     element={<AdminAvisos/>}                          />
           <Route path="/panel/estaciones" element={<AdminEstaciones/>}                      />
           <Route path="/panel/trenes"     element={<AdminTrenes/>}                          />
           <Route path="/panel/servicios"  element={<AdminServicios/>}                       />
-          <Route path="/quienes-somos" element={<QuienesSomos />}                           />
+          
         </Routes>
         <NavBar/>
       </BrowserRouter>
