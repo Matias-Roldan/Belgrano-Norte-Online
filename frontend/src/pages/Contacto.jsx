@@ -44,8 +44,7 @@ const CONTACTOS = [
   {
     ico: '📞',
     titulo: 'Teléfono',
-    linea1: '0800-777-FERR',
-    linea2: '0800-777-3377',
+    linea1: '0800-777-3377',
     color:  '#1A6FAA',
     bg:     '#EAF3FB',
   },
