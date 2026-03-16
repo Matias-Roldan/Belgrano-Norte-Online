@@ -11,7 +11,9 @@ import AdminTrenes     from './pages/AdminTrenes';
 import AdminServicios  from './pages/AdminServicios';
 import QuienesSomos    from './pages/QuienesSomos';
 import Recorrido       from './pages/Recorrido';
+import Contacto        from './pages/Contacto';  
 import api             from './api/belgrano';
+
 
 const T = {
   bgPage:    '#F5F5F0',
@@ -131,7 +133,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Contacto', ruta: '/contacto',
+    label: 'Contacto', ruta: '/Contacto',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -440,7 +442,8 @@ export default function App() {
           <Route path="/quienes-somos"    element={<QuienesSomos />}                        />
           <Route path="/recorrido"        element={<Recorrido/>}                            />
           <Route path="/tarifa"           element={<Proximamente titulo="Tarifa"/>}         />
-          <Route path="/contacto"         element={<Proximamente titulo="Contacto"/>}       />
+          <Route path="/contacto"         element={<Contacto/>}       />
+          <Route path="/estaciones"       element={<Proximamente titulo="Estaciones"/>}     />
           <Route path="/panel"            element={<PanelControl/>}                         />
           <Route path="/panel/avisos"     element={<AdminAvisos/>}                          />
           <Route path="/panel/estaciones" element={<AdminEstaciones/>}                      />
