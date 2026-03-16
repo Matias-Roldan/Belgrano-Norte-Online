@@ -12,6 +12,7 @@ import AdminServicios  from './pages/AdminServicios';
 import QuienesSomos    from './pages/QuienesSomos';
 import Recorrido       from './pages/Recorrido';
 import Contacto        from './pages/Contacto';  
+import Tarifas         from './pages/Tarifas';
 import api             from './api/belgrano';
 
 
@@ -441,7 +442,7 @@ export default function App() {
           <Route path="/avisos"           element={<Avisos/>}                               />
           <Route path="/quienes-somos"    element={<QuienesSomos />}                        />
           <Route path="/recorrido"        element={<Recorrido/>}                            />
-          <Route path="/tarifa"           element={<Proximamente titulo="Tarifa"/>}         />
+          <Route path="/tarifa"           element={<Tarifas/>}         />
           <Route path="/contacto"         element={<Contacto/>}       />
           <Route path="/estaciones"       element={<Proximamente titulo="Estaciones"/>}     />
           <Route path="/panel"            element={<PanelControl/>}                         />
