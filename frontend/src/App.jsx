@@ -9,6 +9,7 @@ import AdminAvisos     from './pages/AdminAvisos';
 import AdminEstaciones from './pages/AdminEstaciones';
 import AdminTrenes     from './pages/AdminTrenes';
 import AdminServicios  from './pages/AdminServicios';
+import QuienesSomos    from './pages/QuienesSomos';
 import api             from './api/belgrano';
 
 const T = {
@@ -92,7 +93,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Horarios', ruta: '/Horarios',
+    label: 'Quienes Somos', ruta: '/Quienes-Somos',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10"/>
@@ -445,6 +446,7 @@ export default function App() {
           <Route path="/panel/estaciones" element={<AdminEstaciones/>}                      />
           <Route path="/panel/trenes"     element={<AdminTrenes/>}                          />
           <Route path="/panel/servicios"  element={<AdminServicios/>}                       />
+          <Route path="/quienes-somos" element={<QuienesSomos />}                           />
         </Routes>
         <NavBar/>
       </BrowserRouter>
