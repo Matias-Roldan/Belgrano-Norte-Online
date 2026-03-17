@@ -1,6 +1,7 @@
 // frontend/src/App.jsx
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import 'leaflet/dist/leaflet.css';
 import Tablero         from './pages/Tablero';
 import Planificar      from './pages/Planificar';
 import Avisos          from './pages/Avisos';
