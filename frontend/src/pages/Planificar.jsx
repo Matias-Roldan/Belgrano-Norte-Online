@@ -36,7 +36,7 @@ const HORAS = Array.from({ length: 24 }, (_, i) => ({
 }));
 
 // ── DROPDOWN GENÉRICO ─────────────────────────
-function Dropdown({ label, opciones, valorKey, textoKey, value, onChange, placeholder, acento }) {
+function Dropdown({ label, opciones, valorKey, textoKey, value, onChange, placeholder, acento, deshabilitado }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const txt = opciones.find(o => String(o[valorKey]) === String(value))?.[textoKey] || '';
@@ -52,11 +52,13 @@ function Dropdown({ label, opciones, valorKey, textoKey, value, onChange, placeh
     <div ref={ref} style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
       <label style={s.dropLabel}>{label}</label>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => { if (!deshabilitado) setOpen(!open); }}
         style={{
           ...s.dropBtn,
           borderColor: value ? color : T.borde,
           color: value ? T.textPri : T.textMuted,
+          opacity: deshabilitado ? 0.5 : 1,
+          cursor: deshabilitado ? 'not-allowed' : 'pointer',
         }}
       >
         <span style={{ fontSize: '1rem', fontWeight: value ? '600' : '400' }}>
@@ -65,7 +67,7 @@ function Dropdown({ label, opciones, valorKey, textoKey, value, onChange, placeh
         <span style={{ fontSize: '0.8rem', color: T.textMuted }}>{open ? '▲' : '▼'}</span>
       </button>
 
-      {open && (
+      {open && !deshabilitado && (
         <div style={s.dropLista}>
           {opciones.map((op) => {
             const on = String(op[valorKey]) === String(value);
@@ -154,13 +156,12 @@ function DropdownHora({ label, value, onChange, placeholder }) {
 export default function Planificar() {
   const navigate = useNavigate();
 
-  const [estaciones, setEstaciones] = useState([]);
-  const [dias,       setDias]       = useState([]);
-  const [sentidos,   setSentidos]   = useState([]);
+  const [estaciones,  setEstaciones]  = useState([]);
+  const [dias,        setDias]        = useState([]);
 
-  const [estacionSel, setEstacionSel] = useState('');
+  const [origenSel,   setOrigenSel]   = useState('');
+  const [destinoSel,  setDestinoSel]  = useState('');
   const [diaSel,      setDiaSel]      = useState('');
-  const [sentidoSel,  setSentidoSel]  = useState('');
   const [horaInicio,  setHoraInicio]  = useState('');
   const [horaFin,     setHoraFin]     = useState('');
 
@@ -184,15 +185,23 @@ export default function Planificar() {
 
   // ── Datos iniciales ──
   useEffect(() => {
-    Promise.all([api.get('/estaciones'), api.get('/dias'), api.get('/sentidos')])
-      .then(([e, d, sv]) => {
-        setEstaciones(e.data); setDias(d.data); setSentidos(sv.data);
-      })
+    Promise.all([api.get('/estaciones'), api.get('/dias')])
+      .then(([e, d]) => { setEstaciones(e.data); setDias(d.data); })
       .catch(() => setError('No se pudieron cargar los datos. Intentá de nuevo.'));
   }, []);
 
+  // Cuando cambia el origen, limpiamos el destino si es igual
+  const handleOrigenChange = (val) => {
+    setOrigenSel(val);
+    if (val === destinoSel) setDestinoSel('');
+  };
+
+  // Estaciones disponibles para destino (todas menos el origen)
+  const estacionesDestino = estaciones.filter(e => String(e.id_estacion) !== String(origenSel));
+
   const horasValidas = !horaInicio || !horaFin || horaFin > horaInicio;
-  const puedesBuscar = estacionSel && diaSel && sentidoSel && horaInicio && horaFin && horasValidas;
+  const origenDistintoDestino = !origenSel || !destinoSel || origenSel !== destinoSel;
+  const puedesBuscar = origenSel && destinoSel && diaSel && horaInicio && horaFin && horasValidas && origenDistintoDestino;
 
   // ── Buscar ──
   const buscar = useCallback(async () => {
@@ -200,7 +209,13 @@ export default function Planificar() {
     setCargando(true); setError(null); setBuscado(true);
     try {
       const res = await api.get('/horarios-rango', {
-        params: { idEstacion: estacionSel, idDia: diaSel, idSentido: sentidoSel, inicio: horaInicio, fin: horaFin },
+        params: {
+          idOrigen:   origenSel,
+          idDestino:  destinoSel,
+          idDia:      diaSel,
+          Inicio:     horaInicio,
+          Fin:        horaFin,
+        },
       });
       setResultados(res.data);
       const n = new Date();
@@ -209,19 +224,18 @@ export default function Planificar() {
       setError('Error al buscar horarios. Revisá los filtros e intentá de nuevo.');
       setResultados([]);
     } finally { setCargando(false); }
-  }, [estacionSel, diaSel, sentidoSel, horaInicio, horaFin, puedesBuscar]);
+  }, [origenSel, destinoSel, diaSel, horaInicio, horaFin, puedesBuscar]);
 
   const limpiar = () => {
-    setEstacionSel(''); setDiaSel(''); setSentidoSel('');
+    setOrigenSel(''); setDestinoSel(''); setDiaSel('');
     setHoraInicio(''); setHoraFin('');
     setResultados([]); setBuscado(false);
     setError(null); setUltimaAct('');
   };
 
-  const nombreEstacion = estaciones.find(e => String(e.id_estacion) === String(estacionSel))?.nombre_estacion || '';
-  const nombreSentido  = sentidos.find(e => String(e.id_sentido) === String(sentidoSel))?.Descripcion_Sentido || '';
-  const nombreDia      = dias.find(e => String(e.ID_Dia) === String(diaSel))?.Descripcion_Dia || '';
-  const sentidoColor   = sentidoSel === '2' ? T.red : T.blue;
+  const nombreOrigen  = estaciones.find(e => String(e.id_estacion) === String(origenSel))?.nombre_estacion  || '';
+  const nombreDestino = estaciones.find(e => String(e.id_estacion) === String(destinoSel))?.nombre_estacion || '';
+  const nombreDia     = dias.find(e => String(e.ID_Dia) === String(diaSel))?.Descripcion_Dia || '';
 
   return (
     <div style={s.root}>
@@ -243,19 +257,40 @@ export default function Planificar() {
 
         {/* ── PANEL DE BÚSQUEDA ── */}
         <div style={s.panel}>
-          <div style={s.panelTitulo}>¿Cuándo y a dónde querés viajar?</div>
+          <div style={s.panelTitulo}>¿De dónde a dónde querés viajar?</div>
 
-          {/* Fila 1: Estación + Día + Sentido */}
-          <div style={s.fila}>
+          {/* Fila 1: Origen + Destino */}
+          <div style={s.filaConector}>
             <Dropdown
-              label="Estación"
+              label="Estación origen"
               opciones={estaciones}
               valorKey="id_estacion"
               textoKey="nombre_estacion"
-              value={estacionSel}
-              onChange={setEstacionSel}
-              placeholder="Seleccioná una estación..."
+              value={origenSel}
+              onChange={handleOrigenChange}
+              placeholder="¿Desde dónde salís?..."
+              acento={T.red}
             />
+            <div style={s.flechaConector}>
+              <div style={s.flechaLinea} />
+              <span style={s.flechaIco}>→</span>
+              <div style={s.flechaLinea} />
+            </div>
+            <Dropdown
+              label="Estación destino"
+              opciones={estacionesDestino}
+              valorKey="id_estacion"
+              textoKey="nombre_estacion"
+              value={destinoSel}
+              onChange={setDestinoSel}
+              placeholder="¿A dónde vas?..."
+              acento={T.blue}
+              deshabilitado={!origenSel}
+            />
+          </div>
+
+          {/* Fila 2: Día */}
+          <div style={{ ...s.fila, marginTop: '1rem' }}>
             <Dropdown
               label="Tipo de día"
               opciones={dias}
@@ -265,19 +300,9 @@ export default function Planificar() {
               onChange={setDiaSel}
               placeholder="Seleccioná el día..."
             />
-            <Dropdown
-              label="Sentido"
-              opciones={sentidos}
-              valorKey="id_sentido"
-              textoKey="Descripcion_Sentido"
-              value={sentidoSel}
-              onChange={setSentidoSel}
-              placeholder="Seleccioná el sentido..."
-              acento={sentidoColor}
-            />
           </div>
 
-          {/* Fila 2: Horas */}
+          {/* Fila 3: Horas */}
           <div style={{ ...s.fila, marginTop: '1rem' }}>
             <DropdownHora
               label="Hora de inicio"
@@ -291,12 +316,14 @@ export default function Planificar() {
               onChange={setHoraFin}
               placeholder="¿Hasta qué hora?..."
             />
-            {!horasValidas && (
-              <div style={s.avisoHora}>
-                ⚠️ La hora de fin debe ser posterior a la de inicio
-              </div>
-            )}
           </div>
+
+          {/* Aviso horas inválidas */}
+          {!horasValidas && (
+            <div style={{ ...s.avisoHora, marginTop: '0.8rem' }}>
+              ⚠️ La hora de fin debe ser posterior a la de inicio
+            </div>
+          )}
 
           {/* Botones */}
           <div style={s.botonesRow}>
@@ -337,7 +364,9 @@ export default function Planificar() {
           <div style={s.sinCard}>
             <div style={s.sinIco}>🌙</div>
             <div style={s.sinTit}>Sin horarios disponibles</div>
-            <div style={s.sinSub}>No hay servicios para {nombreEstacion} en ese rango horario.</div>
+            <div style={s.sinSub}>
+              No hay servicios de {nombreOrigen} a {nombreDestino} en ese rango horario.
+            </div>
           </div>
         )}
 
@@ -346,42 +375,41 @@ export default function Planificar() {
           <div style={s.resultadosBox}>
 
             {/* Encabezado */}
-            <div style={{
-              ...s.resHeader,
-              borderBottom: `3px solid ${sentidoColor}`,
-              background: sentidoSel === '2' ? T.redLight : T.blueLight,
-            }}>
-              <div>
-                <div style={s.resEstacion}>
-                  <span>📍</span>
-                  <span style={s.resEstacionNom}>{nombreEstacion}</span>
+            <div style={s.resHeader}>
+              {/* Tramo */}
+              <div style={s.resTramo}>
+                <div style={s.resTramoItem}>
+                  <span style={s.resTramoLabel}>Origen</span>
+                  <span style={s.resTramoNombre}>{nombreOrigen}</span>
                 </div>
+                <div style={s.resTramoFlecha}>→</div>
+                <div style={s.resTramoItem}>
+                  <span style={s.resTramoLabel}>Destino</span>
+                  <span style={{ ...s.resTramoNombre, color: T.blue }}>{nombreDestino}</span>
+                </div>
+              </div>
+
+              {/* Badges + count */}
+              <div style={s.resMeta}>
                 <div style={s.resDetalles}>
-                  <span style={{
-                    ...s.resBadge,
-                    color: sentidoColor,
-                    background: sentidoSel === '2' ? T.redLight : T.blueLight,
-                    borderColor: sentidoSel === '2' ? T.redBorde : T.blueBorde,
-                  }}>
-                    {nombreSentido}
-                  </span>
                   <span style={s.resBadgeGris}>{nombreDia}</span>
                   <span style={s.resBadgeGris}>
                     {HORAS.find(h => h.valor === horaInicio)?.texto} → {HORAS.find(h => h.valor === horaFin)?.texto}
                   </span>
                 </div>
-              </div>
-              <div style={{ ...s.resCount, color: sentidoColor }}>
-                {resultados.length}
-                <span style={s.resCountSub}>trenes</span>
+                <div style={s.resCount}>
+                  {resultados.length}
+                  <span style={s.resCountSub}>trenes</span>
+                </div>
               </div>
             </div>
 
             {/* Lista de trenes */}
             <div>
               {resultados.map((tren, i) => {
-                const horaDisplay  = (tren.Horario || '').slice(0, 5) || '--:--';
-                const destinoFinal = tren.Destino_Final || '';
+                const horaSalida  = (tren.Hora_Salida  || '').slice(0, 5) || '--:--';
+                const horaLlegada = (tren.Hora_Llegada || '').slice(0, 5) || '--:--';
+                const estado = tren.Estado || '';
                 return (
                   <div
                     key={i}
@@ -389,31 +417,40 @@ export default function Planificar() {
                     onMouseEnter={e => e.currentTarget.style.background = '#F8F8F8'}
                     onMouseLeave={e => e.currentTarget.style.background = T.bgWhite}
                   >
-                    {/* Número de orden */}
+                    {/* Número */}
                     <span style={s.trenNum}>{String(i + 1).padStart(2, '0')}</span>
 
-                    {/* Hora + Destino */}
-                    <div style={s.trenHoraBloque}>
-                      <span style={{ ...s.trenHora, color: sentidoColor }}>
-                        {horaDisplay}
-                      </span>
-                      {/* Destino final — info para decidir si subirse */}
-                      {destinoFinal && (
-                        <div style={s.trenDestino}>
-                          <span style={{ ...s.trenDestinoFlecha, color: sentidoColor }}>→</span>
-                          <span style={s.trenDestinoTxt}>{destinoFinal}</span>
-                        </div>
+                    {/* Salida */}
+                    <div style={s.trenBloque}>
+                      <span style={s.trenBloqueLabel}>Sale</span>
+                      <span style={{ ...s.trenHora, color: T.red }}>{horaSalida}</span>
+                      <span style={s.trenBloqueEst}>{nombreOrigen}</span>
+                    </div>
+
+                    {/* Flecha central */}
+                    <div style={s.trenFlechaWrap}>
+                      <div style={s.trenFlechaLinea} />
+                      <span style={s.trenFlechaIco}>🚂</span>
+                      <div style={s.trenFlechaLinea} />
+                    </div>
+
+                    {/* Llegada */}
+                    <div style={s.trenBloque}>
+                      <span style={s.trenBloqueLabel}>Llega</span>
+                      <span style={{ ...s.trenHora, color: T.blue }}>{horaLlegada}</span>
+                      <span style={s.trenBloqueEst}>{nombreDestino}</span>
+                    </div>
+
+                    {/* Estado */}
+                    <div style={s.trenEstadoWrap}>
+                      {estado && estado !== 'En hora' && (
+                        <span style={s.trenEstadoBadge}>{estado}</span>
+                      )}
+                      {(!estado || estado === 'En hora') && (
+                        <span style={s.trenEnHoraBadge}>En hora</span>
                       )}
                     </div>
 
-                    {/* Sentido */}
-                    <div style={s.trenInfo}>
-                      <span style={s.trenSentido}>{nombreSentido}</span>
-                      <span style={s.trenEstacion}>{nombreEstacion}</span>
-                    </div>
-
-                    {/* Ícono */}
-                    <span style={s.trenIco}>🚂</span>
                   </div>
                 );
               })}
@@ -477,6 +514,19 @@ const s = {
     fontSize: '1.1rem', fontWeight: '600', color: T.textPri,
     marginBottom: '1.2rem', fontFamily: "'Lora', serif",
   },
+
+  // Fila origen → destino con flecha
+  filaConector: {
+    display: 'flex', alignItems: 'flex-end',
+    gap: '0.5rem', flexWrap: 'wrap',
+  },
+  flechaConector: {
+    display: 'flex', alignItems: 'center', gap: '4px',
+    paddingBottom: '0.6rem', flexShrink: 0,
+  },
+  flechaLinea: { width: '12px', height: '2px', background: T.borde },
+  flechaIco:   { fontSize: '1.1rem', color: T.textMuted, fontWeight: '700' },
+
   fila: { display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-start' },
 
   dropLabel: {
@@ -487,8 +537,8 @@ const s = {
     width: '100%', background: T.bgWhite, border: '2px solid',
     borderRadius: '10px', padding: '0.85rem 1rem',
     display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', cursor: 'pointer',
-    transition: 'border-color 0.2s', minHeight: '52px', color: T.textPri,
+    alignItems: 'center', transition: 'border-color 0.2s',
+    minHeight: '52px', color: T.textPri,
   },
   dropLista: {
     position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
@@ -503,9 +553,9 @@ const s = {
   },
 
   avisoHora: {
-    flex: '1 1 100%', background: T.naranjaLight,
-    border: `1.5px solid ${T.naranjaBorde}`, borderRadius: '10px',
-    padding: '0.75rem 1rem', fontSize: '0.9rem', color: T.naranja, fontWeight: '600',
+    background: T.naranjaLight, border: `1.5px solid ${T.naranjaBorde}`,
+    borderRadius: '10px', padding: '0.75rem 1rem',
+    fontSize: '0.9rem', color: T.naranja, fontWeight: '600',
   },
 
   botonesRow: { display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '1.2rem' },
@@ -551,6 +601,7 @@ const s = {
   },
   sinSub: { fontSize: '0.95rem', color: T.textSub },
 
+  // Resultados
   resultadosBox: {
     background: T.bgWhite, border: `1.5px solid ${T.borde}`,
     borderRadius: '16px', overflow: 'hidden',
@@ -558,71 +609,92 @@ const s = {
   },
   resHeader: {
     padding: '1.2rem 1.5rem',
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+    borderBottom: `3px solid ${T.borde}`,
+    background: T.bgPage,
   },
-  resEstacion: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' },
-  resEstacionNom: {
-    fontSize: '1.3rem', fontWeight: '700',
-    color: T.textPri, fontFamily: "'Lora', serif",
+  resTramo: {
+    display: 'flex', alignItems: 'center', gap: '0.8rem',
+    marginBottom: '0.8rem', flexWrap: 'wrap',
+  },
+  resTramoItem: { display: 'flex', flexDirection: 'column', gap: '2px' },
+  resTramoLabel: { fontSize: '0.72rem', color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  resTramoNombre: {
+    fontSize: '1.2rem', fontWeight: '700',
+    color: T.red, fontFamily: "'Lora', serif",
+  },
+  resTramoFlecha: {
+    fontSize: '1.4rem', color: T.textMuted,
+    fontWeight: '700', paddingTop: '12px',
+  },
+  resMeta: {
+    display: 'flex', justifyContent: 'space-between',
+    alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem',
   },
   resDetalles: { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' },
-  resBadge: {
-    fontSize: '0.82rem', fontWeight: '700',
-    border: '1.5px solid', borderRadius: '20px', padding: '3px 12px',
-  },
   resBadgeGris: {
     fontSize: '0.82rem', fontWeight: '600', color: T.textSub,
     background: '#F0F0EC', border: `1px solid ${T.borde}`,
     borderRadius: '20px', padding: '3px 12px',
   },
   resCount: {
-    fontSize: '2.5rem', fontWeight: '800',
+    fontSize: '2rem', fontWeight: '800',
     fontFamily: "'Lora', serif", lineHeight: 1,
-    textAlign: 'center', flexShrink: 0,
+    color: T.textPri, textAlign: 'center',
   },
   resCountSub: {
-    display: 'block', fontSize: '0.75rem', fontWeight: '600',
-    color: T.textSub, fontFamily: "'Source Sans 3', sans-serif", textAlign: 'center',
+    display: 'block', fontSize: '0.72rem', fontWeight: '600',
+    color: T.textSub, fontFamily: "'Source Sans 3', sans-serif",
   },
 
-  // ── Fila de tren ──
+  // Fila de tren
   trenFila: {
     display: 'flex', alignItems: 'center',
-    gap: '1rem', padding: '0.9rem 1.5rem',
+    gap: '0.8rem', padding: '1rem 1.5rem',
     borderBottom: `1px solid ${T.borde}`,
     transition: 'background 0.15s', background: T.bgWhite,
+    flexWrap: 'wrap',
   },
   trenNum: {
     fontSize: '0.85rem', color: T.textMuted,
     fontWeight: '700', minWidth: '24px',
     fontVariantNumeric: 'tabular-nums',
   },
-  // Bloque hora + destino juntos
-  trenHoraBloque: {
-    minWidth: '100px',
-    display: 'flex', flexDirection: 'column', gap: '3px',
+  trenBloque: {
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', gap: '2px', minWidth: '80px',
+  },
+  trenBloqueLabel: {
+    fontSize: '0.7rem', color: T.textMuted,
+    textTransform: 'uppercase', letterSpacing: '0.05em',
   },
   trenHora: {
-    fontSize: '2.2rem', fontWeight: '700',
+    fontSize: '1.9rem', fontWeight: '700',
     fontVariantNumeric: 'tabular-nums', lineHeight: 1,
     fontFamily: "'Lora', serif",
   },
-  // Destino final — debajo de la hora
-  trenDestino: {
-    display: 'flex', alignItems: 'center', gap: '3px',
+  trenBloqueEst: {
+    fontSize: '0.72rem', color: T.textSub,
+    fontWeight: '500', textAlign: 'center',
+    maxWidth: '90px', overflow: 'hidden',
+    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   },
-  trenDestinoFlecha: {
-    fontSize: '0.82rem', fontWeight: '700', lineHeight: 1,
+  trenFlechaWrap: {
+    display: 'flex', alignItems: 'center',
+    gap: '4px', flex: 1, minWidth: '60px',
   },
-  trenDestinoTxt: {
-    fontSize: '0.78rem', color: T.textSub, fontWeight: '500',
-    lineHeight: 1.2, whiteSpace: 'nowrap',
-    overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px',
+  trenFlechaLinea: { flex: 1, height: '2px', background: T.borde },
+  trenFlechaIco:   { fontSize: '1.2rem' },
+  trenEstadoWrap:  { marginLeft: 'auto' },
+  trenEstadoBadge: {
+    display: 'inline-block', fontSize: '0.78rem',
+    fontWeight: '600', border: '1.5px solid #F0B080',
+    borderRadius: '6px', padding: '3px 10px',
+    color: T.naranja, background: T.naranjaLight,
   },
-
-  trenInfo: { flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' },
-  trenSentido: { fontSize: '1rem', fontWeight: '700', color: T.textPri },
-  trenEstacion: { fontSize: '0.85rem', color: T.textSub },
-  trenIco: { fontSize: '1.4rem' },
+  trenEnHoraBadge: {
+    display: 'inline-block', fontSize: '0.78rem',
+    fontWeight: '600', border: `1.5px solid ${T.verdeBorde}`,
+    borderRadius: '6px', padding: '3px 10px',
+    color: T.verde, background: T.verdeLight,
+  },
 };
