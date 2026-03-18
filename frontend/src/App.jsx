@@ -1,5 +1,5 @@
-// frontend/src/App.jsx
-import { useState, useEffect } from 'react';
+// [ARCHIVO: App.jsx] — AUDITADO ✓
+import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import Tablero         from './pages/Tablero';
@@ -12,10 +12,30 @@ import AdminTrenes     from './pages/AdminTrenes';
 import AdminServicios  from './pages/AdminServicios';
 import QuienesSomos    from './pages/QuienesSomos';
 import Recorrido       from './pages/Recorrido';
-import Contacto        from './pages/Contacto';  
+import Contacto        from './pages/Contacto';
 import Tarifas         from './pages/Tarifas';
 import api             from './api/belgrano';
 
+// [SEC-FIX] Allowlist de rutas válidas para navegación programática
+const RUTAS_VALIDAS = new Set([
+  '/', '/tablero', '/planificar', '/avisos', '/quienes-somos',
+  '/recorrido', '/tarifa', '/contacto', '/estaciones', '/panel',
+  '/panel/avisos', '/panel/estaciones', '/panel/trenes', '/panel/servicios',
+]);
+
+// [SEC-FIX] Helper de navegación segura — previene open redirect
+function useSecureNavigate() {
+  const navigate = useNavigate();
+  return useCallback((ruta) => {
+    if (typeof ruta !== 'string') return;
+    const normalizada = ruta.split('?')[0].split('#')[0];
+    if (RUTAS_VALIDAS.has(normalizada)) {
+      navigate(ruta);
+    } else {
+      console.warn('[SEC] Intento de navegación a ruta no permitida:', ruta);
+    }
+  }, [navigate]);
+}
 
 const T = {
   bgPage:    '#F5F5F0',
@@ -44,17 +64,84 @@ const T = {
 };
 
 const PALETA_SERVICIO = {
-  1: { color:'#27AE60', bg:'#F0FBF4', borde:'#C8E6C9', dot:'#27AE60', emoji:'✅' },
-  2: { color:'#D35400', bg:'#FEF3E2', borde:'#F9CB8D', dot:'#D35400', emoji:'⚠️' },
-  3: { color:'#C0392B', bg:'#FDECEA', borde:'#E8A09A', dot:'#C0392B', emoji:'🔴' },
+  1: { color:'#27AE60', bg:'#F0FBF4', borde:'#C8E6C9', dot:'#27AE60', label:'Normal' },
+  2: { color:'#D35400', bg:'#FEF3E2', borde:'#F9CB8D', dot:'#D35400', label:'Alerta' },
+  3: { color:'#C0392B', bg:'#FDECEA', borde:'#E8A09A', dot:'#C0392B', label:'Crítico' },
 };
+
 function getCfgServicio(id) {
-  return PALETA_SERVICIO[id] || { color:'#27AE60', bg:'#F0FBF4', borde:'#C8E6C9', dot:'#27AE60', emoji:'✅' };
+  return PALETA_SERVICIO[id] || PALETA_SERVICIO[1];
+}
+
+function IconoEstado({ tipo }) {
+  if (tipo === 2) return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  );
+  if (tipo === 3) return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/>
+    </svg>
+  );
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  );
 }
 
 // ── GLOBAL STYLES ─────────────────────────────
+// [SEC-FIX] CSP con condicional dev/prod.
+// frame-ancestors y X-Frame-Options REMOVIDOS del meta — solo funcionan
+// como HTTP headers. Configurarlos en el servidor (Nginx / Express / Vite).
+const isDev = import.meta.env.DEV;
+
+const CSP_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  // [SEC-FIX] En dev apunta a localhost; en prod reemplazá con tu dominio real
+  isDev
+    ? "connect-src 'self' http://localhost:5000"
+    : "connect-src 'self' https://tu-api-dominio.com",
+  "img-src 'self' data: https:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  // [SEC-FIX] frame-ancestors REMOVIDO — ignorado en meta tag (CWE-693)
+  // Configurar en el servidor: Content-Security-Policy: frame-ancestors 'none'
+].join('; ');
+
 const GlobalStyles = () => {
   useEffect(() => {
+    // [SEC-FIX] Inyectar meta CSP
+    const existingCsp = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+    if (!existingCsp) {
+      const cspMeta = document.createElement('meta');
+      cspMeta.setAttribute('http-equiv', 'Content-Security-Policy');
+      cspMeta.setAttribute('content', CSP_POLICY);
+      document.head.insertBefore(cspMeta, document.head.firstChild);
+    }
+
+    // [SEC-FIX] Solo meta tags que SÍ funcionan via HTML.
+    // X-Frame-Options REMOVIDO — ignorado en meta tag, solo vale como HTTP header.
+    const metas = [
+      { name: 'referrer', content: 'strict-origin-when-cross-origin' },
+      { httpEquiv: 'X-Content-Type-Options', content: 'nosniff' },
+      // X-Frame-Options removido (CWE-693) — configurar en el servidor
+    ];
+    const insertados = metas.map(({ name, httpEquiv, content }) => {
+      const m = document.createElement('meta');
+      if (name) m.setAttribute('name', name);
+      if (httpEquiv) m.setAttribute('http-equiv', httpEquiv);
+      m.setAttribute('content', content);
+      document.head.appendChild(m);
+      return m;
+    });
+
     const style = document.createElement('style');
     style.textContent = `
       @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
@@ -81,7 +168,11 @@ const GlobalStyles = () => {
       button { font-family:'Source Sans 3',sans-serif; cursor:pointer; border:none; background:none; }
     `;
     document.head.appendChild(style);
-    return () => document.head.removeChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+      insertados.forEach(m => { if (m.parentNode) document.head.removeChild(m); });
+    };
   }, []);
   return null;
 };
@@ -91,25 +182,27 @@ const NAV_ITEMS = [
   {
     label: 'Inicio', ruta: '/',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
         <polyline points="9 22 9 12 15 12 15 22"/>
       </svg>
     ),
   },
   {
-    label: 'Quienes Somos', ruta: '/Quienes-Somos',
+    // [SEC-FIX] Ruta corregida a minúscula para coincidir con <Route> y RUTAS_VALIDAS
+    label: 'Quienes Somos', ruta: '/quienes-somos',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="10"/>
         <polyline points="12 6 12 12 16 14"/>
       </svg>
     ),
   },
   {
-    label: 'Recorrido', ruta: '/Recorrido',
+    // [SEC-FIX] Ruta corregida a minúscula
+    label: 'Recorrido', ruta: '/recorrido',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/>
         <path d="M6 17V7a2 2 0 0 1 2-2h8"/>
         <polyline points="15 3 18 6 15 9"/>
@@ -119,7 +212,7 @@ const NAV_ITEMS = [
   {
     label: 'Tarifa', ruta: '/tarifa',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
         <line x1="1" y1="10" x2="23" y2="10"/>
       </svg>
@@ -128,35 +221,34 @@ const NAV_ITEMS = [
   {
     label: 'Estaciones', ruta: '/estaciones',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <rect x="3" y="3" width="18" height="18" rx="2"/>
         <path d="M3 9h18M9 21V9"/>
       </svg>
     ),
   },
   {
-    label: 'Contacto', ruta: '/Contacto',
+    // [SEC-FIX] Ruta corregida a minúscula
+    label: 'Contacto', ruta: '/contacto',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
     ),
   },
 ];
 
-// Páginas que NO muestran la barra de nav (panel admin)
 const RUTAS_SIN_NAV = ['/panel', '/panel/avisos', '/panel/estaciones', '/panel/trenes', '/panel/servicios'];
 
 function NavBar() {
-  const navigate  = useNavigate();
+  const navigate  = useSecureNavigate();
   const location  = useLocation();
   const [hover, setHover] = useState(null);
 
-  // Ocultar en el panel admin
   if (RUTAS_SIN_NAV.some(r => location.pathname.startsWith(r))) return null;
 
   return (
-    <nav style={nav.bar}>
+    <nav style={nav.bar} role="navigation" aria-label="Navegación principal">
       <div style={nav.inner}>
         {NAV_ITEMS.map(item => {
           const activo = location.pathname === item.ruta;
@@ -167,6 +259,8 @@ function NavBar() {
               onClick={() => navigate(item.ruta)}
               onMouseEnter={() => setHover(item.ruta)}
               onMouseLeave={() => setHover(null)}
+              aria-current={activo ? 'page' : undefined}
+              aria-label={item.label}
               style={{
                 ...nav.btn,
                 color:      activo ? T.red : hovering ? T.red : T.textMuted,
@@ -215,22 +309,55 @@ const nav = {
   label: { fontSize: '0.62rem', letterSpacing: '0.01em', lineHeight: 1, transition: 'color 0.15s', whiteSpace: 'nowrap' },
 };
 
+// ── SANITIZACIÓN DE TEXTO DE API ──────────────
+function sanitizarTexto(str, maxLen = 300) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/[<>'"]/g, c => ({ '<':'&lt;', '>':'&gt;', "'":"&#39;", '"':'&quot;' }[c]))
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .trim()
+    .slice(0, maxLen);
+}
+
+function validarServicio(srv) {
+  if (!srv || typeof srv !== 'object') return null;
+  const idValido = [1, 2, 3].includes(Number(srv.id_servicio));
+  if (!idValido) return null;
+  return {
+    id_servicio: Number(srv.id_servicio),
+    titulo:      sanitizarTexto(srv.titulo || '', 120),
+    descripcion: srv.descripcion ? sanitizarTexto(srv.descripcion, 250) : null,
+  };
+}
+
 // ── BANNER DE SERVICIOS DINÁMICO ──────────────
 function BannerServicios() {
   const [servicios, setServicios] = useState([]);
   const [cargando,  setCargando]  = useState(true);
 
   useEffect(() => {
+    let activo = true;
     api.get('/servicios')
-      .then(r => setServicios(r.data))
-      .catch(() => setServicios([]))
-      .finally(() => setCargando(false));
+      .then(r => {
+        if (!activo) return;
+        const data = Array.isArray(r.data) ? r.data : [];
+        const seguros = data.map(validarServicio).filter(Boolean).slice(0, 10);
+        setServicios(seguros);
+      })
+      .catch(() => { if (activo) setServicios([]); })
+      .finally(() => { if (activo) setCargando(false); });
+    return () => { activo = false; };
   }, []);
 
   if (!cargando && servicios.length === 0) {
     return (
-      <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.85rem 1.5rem', background:'#F0FBF4', borderBottom:'1px solid #C8E6C9' }}>
-        <span style={{ width:'10px', height:'10px', borderRadius:'50%', background: T.verde, boxShadow:`0 0 8px ${T.verde}88`, flexShrink:0, display:'inline-block', animation:'pulse 2.5s infinite' }}/>
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Estado del servicio: normal"
+        style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.85rem 1.5rem', background:'#F0FBF4', borderBottom:'1px solid #C8E6C9' }}
+      >
+        <span aria-hidden="true" style={{ width:'10px', height:'10px', borderRadius:'50%', background: T.verde, boxShadow:`0 0 8px ${T.verde}88`, flexShrink:0, display:'inline-block', animation:'pulse 2.5s infinite' }}/>
         <span style={{ fontSize:'0.9rem', color:'#2E7D32', fontWeight:'500' }}>Servicio operando con normalidad en todas las estaciones</span>
       </div>
     );
@@ -240,25 +367,44 @@ function BannerServicios() {
     const srv = servicios[0];
     const cfg = getCfgServicio(srv.id_servicio);
     return (
-      <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.85rem 1.5rem', background: cfg.bg, borderBottom:`1px solid ${cfg.borde}` }}>
-        <span style={{ width:'10px', height:'10px', borderRadius:'50%', background: cfg.dot, flexShrink:0, display:'inline-block', animation:'pulse 2.5s infinite' }}/>
-        <span style={{ fontSize:'0.9rem', color: cfg.color, fontWeight:'600' }}>{cfg.emoji} {srv.titulo}</span>
-        {srv.descripcion && <span style={{ fontSize:'0.85rem', color: cfg.color, opacity:0.8 }}>— {srv.descripcion}</span>}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label={`Alerta de servicio: ${srv.titulo}`}
+        style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.85rem 1.5rem', background: cfg.bg, borderBottom:`1px solid ${cfg.borde}` }}
+      >
+        <span aria-hidden="true" style={{ width:'10px', height:'10px', borderRadius:'50%', background: cfg.dot, flexShrink:0, display:'inline-block', animation:'pulse 2.5s infinite' }}/>
+        <span style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.9rem', color: cfg.color, fontWeight:'600' }}>
+          <IconoEstado tipo={srv.id_servicio} />
+          {srv.titulo}
+        </span>
+        {srv.descripcion && (
+          <span style={{ fontSize:'0.85rem', color: cfg.color, opacity:0.8 }}>
+            — {srv.descripcion}
+          </span>
+        )}
       </div>
     );
   }
 
   if (!cargando && servicios.length > 1) {
     return (
-      <div style={{ borderBottom:'1px solid #E0E0E0' }}>
+      <div role="status" aria-live="polite" style={{ borderBottom:'1px solid #E0E0E0' }}>
         {servicios.map(srv => {
           const cfg = getCfgServicio(srv.id_servicio);
           return (
             <div key={srv.id_servicio} style={{ display:'flex', alignItems:'flex-start', gap:'0.7rem', padding:'0.75rem 1.5rem', background: cfg.bg, borderBottom:`1px solid ${cfg.borde}` }}>
-              <span style={{ width:'10px', height:'10px', borderRadius:'50%', background: cfg.dot, flexShrink:0, marginTop:'5px', display:'inline-block', animation:'pulse 2.5s infinite' }}/>
+              <span aria-hidden="true" style={{ width:'10px', height:'10px', borderRadius:'50%', background: cfg.dot, flexShrink:0, marginTop:'5px', display:'inline-block', animation:'pulse 2.5s infinite' }}/>
               <div>
-                <div style={{ fontSize:'0.9rem', color: cfg.color, fontWeight:'700', lineHeight:1.3 }}>{cfg.emoji} {srv.titulo}</div>
-                {srv.descripcion && <div style={{ fontSize:'0.82rem', color: cfg.color, opacity:0.8, marginTop:'1px' }}>{srv.descripcion}</div>}
+                <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.9rem', color: cfg.color, fontWeight:'700', lineHeight:1.3 }}>
+                  <IconoEstado tipo={srv.id_servicio} />
+                  {srv.titulo}
+                </div>
+                {srv.descripcion && (
+                  <div style={{ fontSize:'0.82rem', color: cfg.color, opacity:0.8, marginTop:'1px' }}>
+                    {srv.descripcion}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -269,7 +415,7 @@ function BannerServicios() {
 
   return (
     <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.85rem 1.5rem', background:'#F8F8F8', borderBottom:'1px solid #E0E0E0' }}>
-      <span style={{ width:'10px', height:'10px', borderRadius:'50%', background:'#CBD5E0', flexShrink:0, display:'inline-block' }}/>
+      <span aria-hidden="true" style={{ width:'10px', height:'10px', borderRadius:'50%', background:'#CBD5E0', flexShrink:0, display:'inline-block' }}/>
       <span style={{ fontSize:'0.9rem', color: T.textMuted }}>Verificando estado del servicio...</span>
     </div>
   );
@@ -277,7 +423,7 @@ function BannerServicios() {
 
 // ── PANTALLA DE INICIO ────────────────────────
 function Inicio() {
-  const navigate = useNavigate();
+  const navigate = useSecureNavigate();
   const [hh,    setHh]    = useState('00');
   const [mm,    setMm]    = useState('00');
   const [colon, setColon] = useState(true);
@@ -302,19 +448,19 @@ function Inicio() {
       label:'Tablero en Vivo', sub:'Próximos trenes · Tiempo real',
       desc:'Consultá cuándo llega el próximo tren a tu estación.',
       ruta:'/tablero', color:T.red, bgLight:T.redLight, borde:T.redBorde, stat:'Activo', statC:T.verde,
-      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
     },
     {
       label:'Planificar Viaje', sub:'Horarios por rango horario',
       desc:'Buscá todos los trenes disponibles en el horario que necesitás.',
       ruta:'/planificar', color:T.blue, bgLight:T.blueLight, borde:T.blueBorde, stat:'Activo', statC:T.verde,
-      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
     },
     {
       label:'Avisos del Servicio', sub:'Alertas y novedades activas',
       desc:'Informate sobre cancelaciones, demoras y cambios en el recorrido.',
       ruta:'/avisos', color:T.orange, bgLight:T.orangeLight, borde:T.orangeBorde, stat:'Ver avisos', statC:T.orange,
-      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
     },
   ];
 
@@ -324,7 +470,7 @@ function Inicio() {
         <div style={s.headerInner}>
           <div style={s.logoWrap}>
             <div style={s.logoBox}>
-              <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+              <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
                 <rect x="2" y="10" width="28" height="15" rx="2.5" stroke={T.red} strokeWidth="2"/>
                 <circle cx="8" cy="25" r="2.5" stroke={T.red} strokeWidth="2"/>
                 <circle cx="24" cy="25" r="2.5" stroke={T.red} strokeWidth="2"/>
@@ -339,17 +485,17 @@ function Inicio() {
               <div style={s.logoSub}>Trenes Argentinos · Buenos Aires</div>
             </div>
           </div>
-          <div style={s.liveChip}>
-            <span style={s.liveDot}/>
+          <div style={s.liveChip} role="status" aria-label="Datos en tiempo real">
+            <span aria-hidden="true" style={s.liveDot}/>
             <span style={s.liveTxt}>EN VIVO</span>
           </div>
         </div>
-        <div style={s.headerLine}/>
+        <div style={s.headerLine} role="presentation"/>
       </header>
 
-      <div style={s.relojZona} className="a2">
+      <div style={s.relojZona} className="a2" aria-label={`Hora actual: ${hh}:${mm}`}>
         <div style={s.relojFecha}>{fecha.charAt(0).toUpperCase() + fecha.slice(1)}</div>
-        <div style={s.relojFila}>
+        <div style={s.relojFila} aria-hidden="true">
           <span style={s.relojNum}>{hh}</span>
           <span style={{ ...s.relojColon, opacity: colon ? 1 : 0, transition:'opacity 0.1s' }}>:</span>
           <span style={s.relojNum}>{mm}</span>
@@ -369,16 +515,17 @@ function Inicio() {
               onMouseEnter={() => setHover(sec.ruta)}
               onMouseLeave={() => setHover(null)}
               className={`a${i + 3}`}
+              aria-label={`${sec.label}: ${sec.desc}`}
               style={{ ...s.card, borderColor: on ? sec.color : T.borde, boxShadow: on ? `0 4px 20px ${sec.color}25` : `0 2px 8px ${T.sombra}`, transform: on ? 'translateY(-2px)' : 'translateY(0)' }}
             >
-              <div style={{ ...s.cardFranja, background: sec.color }}/>
-              <div style={{ ...s.cardIconoWrap, background: sec.bgLight, color: sec.color }}>{sec.icon}</div>
+              <div style={{ ...s.cardFranja, background: sec.color }} aria-hidden="true"/>
+              <div style={{ ...s.cardIconoWrap, background: sec.bgLight, color: sec.color }} aria-hidden="true">{sec.icon}</div>
               <div style={s.cardTextos}>
                 <div style={{ ...s.cardLabel, color: T.textPri }}>{sec.label}</div>
                 <div style={s.cardSub}>{sec.sub}</div>
                 <div style={s.cardDesc}>{sec.desc}</div>
               </div>
-              <div style={s.cardDerecha}>
+              <div style={s.cardDerecha} aria-hidden="true">
                 <div style={{ ...s.cardStat, color: sec.statC, background:`${sec.statC}15`, borderColor:`${sec.statC}44` }}>{sec.stat}</div>
                 <div style={{ ...s.cardFlecha, color: sec.color }}>›</div>
               </div>
@@ -388,16 +535,17 @@ function Inicio() {
       </main>
 
       <footer style={s.footer} className="a6">
-        <div style={s.footerLinea}/>
+        <div style={s.footerLinea} role="presentation"/>
         <div style={s.footerTxt}>Belgrano Norte Online · 23 Estaciones · Buenos Aires</div>
         <div style={s.panelAccesoWrap}>
           <button
             onClick={() => navigate('/panel')}
             onMouseEnter={e => { e.currentTarget.style.background = T.slateLight; e.currentTarget.style.borderColor = T.slate; e.currentTarget.style.color = T.slate; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = T.slateBorde; e.currentTarget.style.color = T.textMuted; }}
+            aria-label="Acceso al panel de operadores"
             style={s.panelBtn}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
             Panel de operadores
@@ -410,18 +558,19 @@ function Inicio() {
 
 // ── PLACEHOLDER para páginas aún no desarrolladas ──
 function Proximamente({ titulo }) {
-  const navigate = useNavigate();
+  const navigate = useSecureNavigate();
+  const tituloSeguro = sanitizarTexto(String(titulo || ''), 80);
   return (
     <div style={{ backgroundColor: T.bgPage, minHeight:'100vh', display:'flex', flexDirection:'column', fontFamily:"'Source Sans 3', sans-serif" }}>
       <header style={{ background: T.bgWhite, boxShadow:`0 2px 8px rgba(0,0,0,0.08)`, position:'sticky', top:0, zIndex:100 }}>
         <div style={{ display:'flex', alignItems:'center', padding:'1rem 1.5rem', maxWidth:'680px', margin:'0 auto', width:'100%', gap:'1rem' }}>
           <button onClick={() => navigate('/')} style={{ background: T.bgWhite, border:`2px solid ${T.borde}`, color: T.textSub, padding:'0.6rem 1rem', borderRadius:'8px', cursor:'pointer', fontSize:'0.95rem', fontWeight:'600', whiteSpace:'nowrap', minHeight:'44px' }}>← Volver</button>
-          <div style={{ fontSize:'1.2rem', fontWeight:'700', fontFamily:"'Lora', serif", color: T.textPri }}>{titulo}</div>
+          <div style={{ fontSize:'1.2rem', fontWeight:'700', fontFamily:"'Lora', serif", color: T.textPri }}>{tituloSeguro}</div>
         </div>
         <div style={{ height:'3px', background:`linear-gradient(90deg, ${T.red}, #E74C3C)` }}/>
       </header>
       <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'2rem', textAlign:'center', gap:'1rem' }}>
-        <div style={{ fontSize:'4rem' }}>🚧</div>
+        <div style={{ fontSize:'4rem' }} aria-hidden="true">🚧</div>
         <div style={{ fontSize:'1.5rem', fontWeight:'700', fontFamily:"'Lora', serif", color: T.textPri }}>Próximamente</div>
         <div style={{ fontSize:'1rem', color: T.textSub, maxWidth:'280px', lineHeight:1.5 }}>Esta sección está en desarrollo. ¡Volvé pronto!</div>
         <button onClick={() => navigate('/')} style={{ marginTop:'1rem', background: T.red, color:'#fff', border:'none', borderRadius:'10px', padding:'0.85rem 2rem', fontSize:'1rem', fontWeight:'700', cursor:'pointer' }}>Ir al inicio</button>
@@ -443,15 +592,15 @@ export default function App() {
           <Route path="/avisos"           element={<Avisos/>}                               />
           <Route path="/quienes-somos"    element={<QuienesSomos />}                        />
           <Route path="/recorrido"        element={<Recorrido/>}                            />
-          <Route path="/tarifa"           element={<Tarifas/>}         />
-          <Route path="/contacto"         element={<Contacto/>}       />
+          <Route path="/tarifa"           element={<Tarifas/>}                              />
+          <Route path="/contacto"         element={<Contacto/>}                             />
           <Route path="/estaciones"       element={<Proximamente titulo="Estaciones"/>}     />
           <Route path="/panel"            element={<PanelControl/>}                         />
           <Route path="/panel/avisos"     element={<AdminAvisos/>}                          />
           <Route path="/panel/estaciones" element={<AdminEstaciones/>}                      />
           <Route path="/panel/trenes"     element={<AdminTrenes/>}                          />
           <Route path="/panel/servicios"  element={<AdminServicios/>}                       />
-          
+          <Route path="*"                 element={<Inicio/>}                               />
         </Routes>
         <NavBar/>
       </BrowserRouter>
