@@ -25,9 +25,9 @@ app.use(helmet({
       scriptSrc:      ["'self'"],
       styleSrc:       ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc:        ["'self'", "https://fonts.gstatic.com"],
-      connectSrc:     isDev
-        ? ["'self'", "http://localhost:5000", "http://localhost:5173"]
-        : ["'self'", "https://belgrano-norte-online-production.up.railway.app"],
+      connectSrc: isDev
+      ? ["'self'", "http://localhost:5000", "http://localhost:5173"]
+      : ["'self'", "https://belgrano-norte-online.vercel.app"],
       imgSrc:         ["'self'", "data:", "https:"],
       objectSrc:      ["'none'"],
       frameAncestors: ["'none'"],
