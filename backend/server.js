@@ -6,8 +6,16 @@ if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
 
-const app = express();
+// ✅ AGREGADO: Validar variables críticas al arranque
+// Si falta alguna, el error es claro en los logs de Railway
+const VARS_REQUERIDAS = ['JWT_SECRET']; // agregá las que uses: DATABASE_URL, etc.
+const faltantes = VARS_REQUERIDAS.filter(v => !process.env[v]);
+if (faltantes.length > 0) {
+  console.error(`[FATAL] Variables de entorno faltantes: ${faltantes.join(', ')}`);
+  process.exit(1); // Falla rápido con mensaje claro en lugar de 500 misterioso
+}
 
+const app = express();
 const isDev = process.env.NODE_ENV !== 'production';
 
 app.use(helmet({
@@ -30,13 +38,25 @@ app.use(helmet({
   referrerPolicy:      { policy: 'strict-origin-when-cross-origin' },
 }));
 
+// ✅ CORREGIDO: Asegurate de que CORS_ORIGINS esté seteada en Railway
+// En Railway dashboard: CORS_ORIGINS=https://belgrano-norte-online-production.up.railway.app
 const ORIGENES_PERMITIDOS = (process.env.CORS_ORIGINS || 'http://localhost:5173')
   .split(',').map(o => o.trim());
+
+console.log('[CORS] Orígenes permitidos:', ORIGENES_PERMITIDOS); // ← para verificar en logs
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin && isDev) return callback(null, true);
+
+    // ✅ AGREGADO: En producción, también permitir requests sin origin
+    // (Postman, health checks de Railway, etc.)
+    if (!origin && !isDev) return callback(null, true);
+
     if (ORIGENES_PERMITIDOS.includes(origin)) return callback(null, true);
+
+    // ✅ CORREGIDO: Log del origen rechazado para debuggear
+    console.warn('[CORS] Origen rechazado:', origin);
     callback(new Error('Origen no permitido por CORS'));
   },
   methods:        ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
@@ -74,14 +94,30 @@ app.use('/api',             limitadorGeneral);
 app.use('/api/panel',       limitadorPanel);
 app.use('/api/auth/login',  limitadorLogin);
 
-const publicas          = require('./routes/publicas');
-const panel             = require('./routes/panel');
-const auth              = require('./routes/auth');
-const { verificarToken} = require('./middleware/auth');
+// ✅ AGREGADO: Health check que Railway puede usar para verificar que el servidor vive
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+// ✅ AGREGADO: Envolver los requires en try/catch para detectar errores de carga
+let publicas, panel, auth, verificarToken;
+try {
+  publicas        = require('./routes/publicas');
+  panel           = require('./routes/panel');
+  auth            = require('./routes/auth');
+  ({ verificarToken } = require('./middleware/auth'));
+} catch (err) {
+  console.error('[FATAL] Error cargando rutas o middleware:', err.message);
+  process.exit(1);
+}
 
 app.use('/api',       publicas);
 app.use('/api/auth',  auth);
 app.use('/api/panel', verificarToken, panel);
+
+// ✅ AGREGADO: Ruta catch-all para debuggear rutas inexistentes
+app.use((req, res, next) => {
+  console.warn(`[404] ${req.method} ${req.path}`);
+  res.status(404).json({ error: 'Ruta no encontrada' });
+});
 
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err.message);
@@ -91,4 +127,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, '0.0.0.0', () => console.log(`Servidor corriendo en puerto ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor corriendo en puerto ${PORT}`);
+  console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`); // ✅ AGREGADO
+});
