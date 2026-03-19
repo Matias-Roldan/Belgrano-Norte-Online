@@ -1,7 +1,7 @@
 // [ARCHIVO: AdminEstaciones.jsx] — AUDITADO ✓
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/belgrano';
+import api from '../../api/belgrano';
 
 const T = {
   bgPage:'#F0F2F5', bgWhite:'#FFFFFF',

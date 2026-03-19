@@ -1,23 +1,6 @@
 // [ARCHIVO: Tarifas.jsx] — AUDITADO ✓
-import { useNavigate } from 'react-router-dom';
-
-const T = {
-  bgPage:    '#F5F5F0',
-  bgWhite:   '#FFFFFF',
-  red:       '#C0392B',
-  redLight:  '#FDECEA',
-  redBorde:  '#E8A09A',
-  blue:      '#1A6FAA',
-  blueLight: '#EAF3FB',
-  textPri:   '#1A1A1A',
-  textSub:   '#555555',
-  textMuted: '#999999',
-  borde:     '#E0E0E0',
-  sombra:    'rgba(0,0,0,0.07)',
-  verde:     '#27AE60',
-  verdeLight:'#EDFAF3',
-  verdeBorde:'#A9DFBF',
-};
+import { useSecureNavigate } from '../../hooks/useSecureNavigate';
+import { T }                 from '../../utils/constantes';
 
 // [SEC-FIX] Datos hardcodeados — sin emojis en el objeto de config.
 // Los iconos se renderizan con SVG controlados en el componente.
@@ -113,14 +96,14 @@ function IcoGratis(props) {
 }
 
 export default function Tarifas() {
-  var navigate = useNavigate();
+  const navigate = useSecureNavigate();
 
   return (
     <div style={s.root}>
 
       <header style={s.header}>
         <div style={s.headerInner}>
-          <button onClick={function() { navigate('/'); }} style={s.btnVolver} aria-label="Volver al inicio">
+          <button onClick={() => navigate('/')} style={s.btnVolver} aria-label="Volver al inicio">
             {'<- Volver'}
           </button>
           <div style={s.headerCentro}>
@@ -169,15 +152,13 @@ export default function Tarifas() {
         <div style={s.seccionesPanel}>
           <div style={s.seccionesTitulo}>Boleto ida con SUBE</div>
           <div style={s.seccionesGrid}>
-            {SECCIONES.map(function(sec, i) {
-              return (
-                <div key={i} style={{ ...s.seccionCard, borderTop: '4px solid ' + sec.color }}>
-                  <div style={{ ...s.seccionNombre, color: sec.color }}>{sec.seccion}</div>
-                  <div style={{ ...s.seccionPrecio, color: sec.color }}>{sec.precio}</div>
-                  <div style={s.seccionLbl}>por viaje</div>
-                </div>
-              );
-            })}
+            {SECCIONES.map((sec, i) => (
+              <div key={i} style={{ ...s.seccionCard, borderTop: '4px solid ' + sec.color }}>
+                <div style={{ ...s.seccionNombre, color: sec.color }}>{sec.seccion}</div>
+                <div style={{ ...s.seccionPrecio, color: sec.color }}>{sec.precio}</div>
+                <div style={s.seccionLbl}>por viaje</div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -191,8 +172,8 @@ export default function Tarifas() {
           <div style={s.gratisSub}>
             Los siguientes pasajeros <strong>no pagan boleto:</strong>
           </div>
-          {GRATUITOS.map(function(item, i) {
-            var esUltimo = i === GRATUITOS.length - 1;
+          {GRATUITOS.map((item, i) => {
+            const esUltimo = i === GRATUITOS.length - 1;
             return (
               <div key={i} style={{ ...s.gratisItem, borderBottom: esUltimo ? 'none' : '1px solid ' + T.borde }}>
                 <div style={s.gratisIcoWrap}>

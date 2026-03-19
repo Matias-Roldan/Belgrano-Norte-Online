@@ -1,20 +1,6 @@
 // [ARCHIVO: QuienesSomos.jsx] — AUDITADO ✓
-import { useNavigate } from 'react-router-dom';
-
-const T = {
-  bgPage:   '#F5F5F0',
-  bgWhite:  '#FFFFFF',
-  red:      '#C0392B',
-  redLight: '#FDECEA',
-  redBorde: '#E8A09A',
-  blue:     '#1A6FAA',
-  textPri:  '#1A1A1A',
-  textSub:  '#555555',
-  textMuted:'#999999',
-  borde:    '#E0E0E0',
-  sombra:   'rgba(0,0,0,0.07)',
-  verde:    '#27AE60',
-};
+import { useSecureNavigate } from '../../hooks/useSecureNavigate';
+import { T }                 from '../../utils/constantes';
 
 // [SEC-FIX] SVG controlados por tipo — reemplazan emojis en INFO y en el render
 function IconoInfo({ tipo, color, size }) {
@@ -45,7 +31,6 @@ function IconoInfo({ tipo, color, size }) {
       <path d="M2 12h20M7 7V4M17 7V4"/>
     </svg>
   );
-  // info
   return (
     <svg width={sz} height={sz} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="10"/>
@@ -81,7 +66,7 @@ const INFO = [
 ];
 
 export default function QuienesSomos() {
-  const navigate = useNavigate();
+  const navigate = useSecureNavigate(); // [SEC-FIX] navegacion segura con allowlist
 
   return (
     <div style={s.root}>
@@ -89,7 +74,7 @@ export default function QuienesSomos() {
       <header style={s.header}>
         <div style={s.headerInner}>
           <button onClick={() => navigate('/')} style={s.btnVolver} aria-label="Volver al inicio">
-            {'← Volver'}
+            Volver
           </button>
           <div style={s.headerCentro}>
             <div style={s.headerTitulo}>Quiénes Somos</div>
@@ -102,9 +87,7 @@ export default function QuienesSomos() {
 
       <main style={s.main}>
 
-        {/* ── HERO ── */}
         <div style={s.hero}>
-          {/* [SEC-FIX] SVG en lugar de emoji 🚂 */}
           <div style={s.heroIco}>
             <IconoInfo tipo="tren" color={T.red} size={48}/>
           </div>
@@ -112,7 +95,6 @@ export default function QuienesSomos() {
           <p style={s.heroSub}>Recorrido · Estaciones · Horarios · Tarifas</p>
         </div>
 
-        {/* ── STATS ── */}
         <div style={s.statsRow}>
           <div style={s.statCard}>
             <div style={s.statNum}>54</div>
@@ -128,12 +110,10 @@ export default function QuienesSomos() {
           </div>
         </div>
 
-        {/* ── INFO CARDS ── */}
         {INFO.map(function(item, i) {
           return (
             <div key={i} style={{ ...s.card, borderLeft: '4px solid ' + item.color }}>
               <div style={{ ...s.cardIcoWrap, background: item.bg }}>
-                {/* [SEC-FIX] SVG controlado — tipoIco es un valor estático del array */}
                 <IconoInfo tipo={item.tipoIco} color={item.color} size={22}/>
               </div>
               <div style={s.cardBody}>
@@ -144,7 +124,6 @@ export default function QuienesSomos() {
           );
         })}
 
-        {/* ── RECORRIDO VISUAL ── */}
         <div style={s.panel}>
           <div style={s.panelTitulo}>Recorrido de la línea</div>
           <div style={s.rutaWrap}>
@@ -169,9 +148,7 @@ export default function QuienesSomos() {
           </div>
         </div>
 
-        {/* ── AVISO LEGAL ── */}
         <div style={s.aviso} role="note">
-          {/* [SEC-FIX] SVG en lugar de emoji ℹ️ */}
           <IconoInfo tipo="info" color="#7A6000" size={18}/>
           <span style={s.avisoTxt}>
             Este sitio no pertenece a ningún organismo nacional, provincial o municipal.
@@ -185,38 +162,38 @@ export default function QuienesSomos() {
 }
 
 const s = {
-  root: { backgroundColor: T.bgPage, minHeight: '100vh', fontFamily: "'Source Sans 3', 'Segoe UI', sans-serif", color: T.textPri },
-  header: { background: T.bgWhite, boxShadow: '0 2px 8px ' + T.sombra, position: 'sticky', top: 0, zIndex: 100 },
-  headerInner: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', maxWidth: '820px', margin: '0 auto', width: '100%' },
-  btnVolver: { background: T.bgWhite, border: '2px solid ' + T.borde, color: T.textSub, padding: '0.6rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: '600', whiteSpace: 'nowrap', minHeight: '44px' },
+  root:         { backgroundColor: T.bgPage, minHeight: '100vh', fontFamily: "'Source Sans 3', 'Segoe UI', sans-serif", color: T.textPri },
+  header:       { background: T.bgWhite, boxShadow: '0 2px 8px ' + T.sombra, position: 'sticky', top: 0, zIndex: 100 },
+  headerInner:  { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', maxWidth: '820px', margin: '0 auto', width: '100%' },
+  btnVolver:    { background: T.bgWhite, border: '2px solid ' + T.borde, color: T.textSub, padding: '0.6rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: '600', whiteSpace: 'nowrap', minHeight: '44px' },
   headerCentro: { textAlign: 'center' },
   headerTitulo: { fontSize: '1.3rem', fontWeight: '700', color: T.textPri, fontFamily: "'Lora', serif", lineHeight: 1.1 },
-  headerSub: { fontSize: '0.75rem', color: T.textSub, marginTop: '2px' },
-  headerLine: { height: '3px', background: 'linear-gradient(90deg, ' + T.red + ', #E74C3C)' },
-  main: { maxWidth: '820px', margin: '0 auto', padding: '1.5rem' },
-  hero: { background: T.bgWhite, border: '1.5px solid ' + T.borde, borderRadius: '16px', padding: '2rem 1.5rem', textAlign: 'center', marginBottom: '1rem', boxShadow: '0 2px 8px ' + T.sombra },
-  heroIco: { marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' },
-  heroTitulo: { fontSize: '1.8rem', fontWeight: '700', color: T.textPri, fontFamily: "'Lora', serif", margin: '0 0 0.4rem' },
-  heroSub: { fontSize: '1rem', color: T.textSub, margin: 0 },
-  statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.8rem', marginBottom: '1rem' },
-  statCard: { background: T.bgWhite, border: '1.5px solid ' + T.borde, borderRadius: '12px', padding: '1rem', textAlign: 'center', boxShadow: '0 2px 8px ' + T.sombra },
-  statNum: { fontSize: '2rem', fontWeight: '700', color: T.red, fontFamily: "'Lora', serif", lineHeight: 1 },
-  statLabel: { fontSize: '0.78rem', color: T.textSub, marginTop: '4px' },
-  card: { display: 'flex', alignItems: 'flex-start', gap: '1rem', background: T.bgWhite, border: '1.5px solid ' + T.borde, borderRadius: '12px', padding: '1.1rem 1.2rem', marginBottom: '0.8rem', boxShadow: '0 2px 8px ' + T.sombra, borderLeftWidth: '4px', borderLeftStyle: 'solid' },
-  cardIcoWrap: { width: '44px', height: '44px', minWidth: '44px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  cardBody: { flex: 1 },
-  cardTitulo: { fontSize: '1rem', fontWeight: '700', fontFamily: "'Lora', serif", marginBottom: '0.3rem' },
-  cardTexto: { fontSize: '0.92rem', color: T.textSub, lineHeight: 1.55 },
-  panel: { background: T.bgWhite, border: '1.5px solid ' + T.borde, borderRadius: '16px', padding: '1.4rem', marginBottom: '1rem', boxShadow: '0 2px 8px ' + T.sombra },
-  panelTitulo: { fontSize: '1.1rem', fontWeight: '600', color: T.textPri, fontFamily: "'Lora', serif", marginBottom: '1.2rem' },
-  rutaWrap: { display: 'flex', flexDirection: 'column', gap: '0.6rem' },
+  headerSub:    { fontSize: '0.75rem', color: T.textSub, marginTop: '2px' },
+  headerLine:   { height: '3px', background: 'linear-gradient(90deg, ' + T.red + ', #E74C3C)' },
+  main:         { maxWidth: '820px', margin: '0 auto', padding: '1.5rem' },
+  hero:         { background: T.bgWhite, border: '1.5px solid ' + T.borde, borderRadius: '16px', padding: '2rem 1.5rem', textAlign: 'center', marginBottom: '1rem', boxShadow: '0 2px 8px ' + T.sombra },
+  heroIco:      { marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' },
+  heroTitulo:   { fontSize: '1.8rem', fontWeight: '700', color: T.textPri, fontFamily: "'Lora', serif", margin: '0 0 0.4rem' },
+  heroSub:      { fontSize: '1rem', color: T.textSub, margin: 0 },
+  statsRow:     { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.8rem', marginBottom: '1rem' },
+  statCard:     { background: T.bgWhite, border: '1.5px solid ' + T.borde, borderRadius: '12px', padding: '1rem', textAlign: 'center', boxShadow: '0 2px 8px ' + T.sombra },
+  statNum:      { fontSize: '2rem', fontWeight: '700', color: T.red, fontFamily: "'Lora', serif", lineHeight: 1 },
+  statLabel:    { fontSize: '0.78rem', color: T.textSub, marginTop: '4px' },
+  card:         { display: 'flex', alignItems: 'flex-start', gap: '1rem', background: T.bgWhite, border: '1.5px solid ' + T.borde, borderRadius: '12px', padding: '1.1rem 1.2rem', marginBottom: '0.8rem', boxShadow: '0 2px 8px ' + T.sombra, borderLeftWidth: '4px', borderLeftStyle: 'solid' },
+  cardIcoWrap:  { width: '44px', height: '44px', minWidth: '44px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  cardBody:     { flex: 1 },
+  cardTitulo:   { fontSize: '1rem', fontWeight: '700', fontFamily: "'Lora', serif", marginBottom: '0.3rem' },
+  cardTexto:    { fontSize: '0.92rem', color: T.textSub, lineHeight: 1.55 },
+  panel:        { background: T.bgWhite, border: '1.5px solid ' + T.borde, borderRadius: '16px', padding: '1.4rem', marginBottom: '1rem', boxShadow: '0 2px 8px ' + T.sombra },
+  panelTitulo:  { fontSize: '1.1rem', fontWeight: '600', color: T.textPri, fontFamily: "'Lora', serif", marginBottom: '1.2rem' },
+  rutaWrap:     { display: 'flex', flexDirection: 'column', gap: '0.6rem' },
   rutaEstacion: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  rutaDot: { width: '14px', height: '14px', borderRadius: '50%', flexShrink: 0 },
-  rutaNombre: { fontSize: '1rem', fontWeight: '700', color: T.textPri },
-  rutaSub: { fontSize: '0.8rem', color: T.textMuted },
-  rutaLinea: { display: 'flex', alignItems: 'center', gap: '0.8rem', paddingLeft: '6px' },
+  rutaDot:      { width: '14px', height: '14px', borderRadius: '50%', flexShrink: 0 },
+  rutaNombre:   { fontSize: '1rem', fontWeight: '700', color: T.textPri },
+  rutaSub:      { fontSize: '0.8rem', color: T.textMuted },
+  rutaLinea:    { display: 'flex', alignItems: 'center', gap: '0.8rem', paddingLeft: '6px' },
   rutaLineaBar: { width: '3px', height: '36px', background: T.borde, borderRadius: '2px', flexShrink: 0 },
-  rutaKm: { fontSize: '0.85rem', color: T.textMuted, fontWeight: '600', fontFamily: "'Lora', serif" },
-  aviso: { display: 'flex', alignItems: 'flex-start', gap: '0.7rem', background: '#FFFBEB', border: '1.5px solid #F0D060', borderRadius: '12px', padding: '1rem 1.2rem' },
-  avisoTxt: { fontSize: '0.88rem', color: '#7A6000', lineHeight: 1.5 },
+  rutaKm:       { fontSize: '0.85rem', color: T.textMuted, fontWeight: '600', fontFamily: "'Lora', serif" },
+  aviso:        { display: 'flex', alignItems: 'flex-start', gap: '0.7rem', background: '#FFFBEB', border: '1.5px solid #F0D060', borderRadius: '12px', padding: '1rem 1.2rem' },
+  avisoTxt:     { fontSize: '0.88rem', color: '#7A6000', lineHeight: 1.5 },
 };

@@ -1,27 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../api/belgrano';
-
-const T = {
-  bgPage:    '#F5F5F0',
-  bgWhite:   '#FFFFFF',
-  bgCard:    '#FFFFFF',
-  red:       '#C0392B',
-  redLight:  '#FDECEA',
-  redBorde:  '#E8A09A',
-  blue:      '#1A6FAA',
-  blueLight: '#EAF3FB',
-  blueBorde: '#9AC4E2',
-  orange:    '#D35400',
-  textPri:   '#1A1A1A',
-  textSub:   '#555555',
-  textMuted: '#999999',
-  borde:     '#E0E0E0',
-  sombra:    'rgba(0,0,0,0.07)',
-  verde:     '#27AE60',
-  urgNaranja:'#E67E22',
-  urgRojo:   '#C0392B',
-};
+import api                   from '../../api/belgrano';
+import { useSecureNavigate } from '../../hooks/useSecureNavigate';
+import { T }                 from '../../utils/constantes';
 
 // [SEC-FIX] Sanitizar texto de API — elimina caracteres de control
 function sanitizarTexto(str, max = 200) {
@@ -172,7 +152,7 @@ function FilaTren({ tren, calcMin, colorSentido }) {
 
       <div style={s.trenCountWrap}>
         {min.esAhora ? (
-          <div style={{ ...s.countAhora, background: T.urgRojo }} role="status" aria-label="El tren llega ahora">
+          <div style={{ ...s.countAhora, background: T.red }} role="status" aria-label="El tren llega ahora">
             ¡AHORA!
           </div>
         ) : (
@@ -188,7 +168,7 @@ function FilaTren({ tren, calcMin, colorSentido }) {
 
 // ── TABLERO PRINCIPAL ─────────────────────────
 export default function Tablero() {
-  const navigate = useNavigate();
+  const navigate = useSecureNavigate();
   const [estaciones, setEstaciones] = useState([]);
   const [dias,       setDias]       = useState([]);
   const [estSel,     setEstSel]     = useState('');
@@ -292,8 +272,8 @@ export default function Tablero() {
     const sal   = new Date();
     sal.setHours(h, m, sv, 0);
     const diff = Math.round((sal - ahora) / 60000);
-    if (diff <= 0) return { minutos: '0',         color: T.urgRojo,    urgente: true,  esAhora: true  };
-    if (diff <= 5) return { minutos: String(diff), color: T.urgNaranja, urgente: true,  esAhora: false };
+    if (diff <= 0) return { minutos: '0',         color: T.red,    urgente: true,  esAhora: true  };
+    if (diff <= 5) return { minutos: String(diff), color: T.orange, urgente: true,  esAhora: false };
     return             { minutos: String(diff), color: T.verde,      urgente: false, esAhora: false };
   }, []);
 
@@ -447,8 +427,8 @@ export default function Tablero() {
               <div style={s.leyTitulo}>Referencias de color:</div>
               <div style={s.leyItems}>
                 <span style={s.leyItem}><span style={{ ...s.leyDot, background: T.verde }}/><span>Más de 5 minutos</span></span>
-                <span style={s.leyItem}><span style={{ ...s.leyDot, background: T.urgNaranja }}/><span>Menos de 5 minutos</span></span>
-                <span style={s.leyItem}><span style={{ ...s.leyDot, background: T.urgRojo }}/><span>Llega ahora</span></span>
+                <span style={s.leyItem}><span style={{ ...s.leyDot, background: T.orange }}/><span>Menos de 5 minutos</span></span>
+                <span style={s.leyItem}><span style={{ ...s.leyDot, background: T.red }}/><span>Llega ahora</span></span>
               </div>
             </div>
           </>

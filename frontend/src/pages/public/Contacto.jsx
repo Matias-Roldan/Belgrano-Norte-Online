@@ -1,22 +1,6 @@
 // [ARCHIVO: Contacto.jsx] -- AUDITADO
-import { useNavigate } from 'react-router-dom';
-
-const T = {
-  bgPage:    '#F5F5F0',
-  bgWhite:   '#FFFFFF',
-  red:       '#C0392B',
-  redLight:  '#FDECEA',
-  redBorde:  '#E8A09A',
-  blue:      '#1A6FAA',
-  blueLight: '#EAF3FB',
-  textPri:   '#1A1A1A',
-  textSub:   '#555555',
-  textMuted: '#999999',
-  borde:     '#E0E0E0',
-  sombra:    'rgba(0,0,0,0.07)',
-  verde:     '#27AE60',
-  verdeLight:'#EDFAF3',
-};
+import { useSecureNavigate } from '../../hooks/useSecureNavigate';
+import { T }                 from '../../utils/constantes';
 
 const CONTACTOS = [
   {
@@ -40,7 +24,6 @@ const CONTACTOS = [
   {
     tipo:   'telefono',
     titulo: 'Telefono',
-    linea1: '0800-777-FERR',
     linea2: '0800-777-3377',
     color:  '#1A6FAA',
     bg:     '#EAF3FB',
@@ -87,8 +70,6 @@ function IconoTipo({ tipo, color }) {
   );
 }
 
-// [SEC-FIX] Extraido en componente propio para evitar que el tag <a
-// sea cortado por el parser del chat al copiar el codigo.
 function LinkAccion({ href, tipo, accion, titulo, color, bg }) {
   return (
     <a
@@ -110,7 +91,7 @@ function LinkAccion({ href, tipo, accion, titulo, color, bg }) {
 }
 
 export default function Contacto() {
-  var navigate = useNavigate();
+  var navigate = useSecureNavigate(); // [SEC-FIX] navegacion segura con allowlist
 
   return (
     <div style={s.root}>

@@ -1,5 +1,9 @@
+// middleware/auth.js
+// ─────────────────────────────────────────────
+// Verifica el JWT en el header Authorization.
+// Se aplica a todas las rutas de /api/panel
+// ─────────────────────────────────────────────
 const jwt = require('jsonwebtoken');
-// npm install jsonwebtoken
 
 function verificarToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -16,7 +20,7 @@ function verificarToken(req, res, next) {
     req.usuario = payload;
     next();
   } catch {
-    return res.status(403).json({ error: 'Token inválido o expirado' });
+    return res.status(403).json({ error: 'Token invalido o expirado' });
   }
 }
 
