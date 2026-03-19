@@ -1,11 +1,13 @@
 const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
-require('dotenv').config();
+
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 
 const app = express();
 
-// [SEC-FIX] Headers de seguridad HTTP completos
 const isDev = process.env.NODE_ENV !== 'production';
 
 app.use(helmet({
@@ -15,11 +17,9 @@ app.use(helmet({
       scriptSrc:      ["'self'"],
       styleSrc:       ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc:        ["'self'", "https://fonts.gstatic.com"],
-      // [SEC-FIX] connectSrc permite llamadas al backend desde el frontend.
-      // En dev incluye localhost; en prod solo el dominio real.
       connectSrc:     isDev
         ? ["'self'", "http://localhost:5000", "http://localhost:5173"]
-        : ["'self'", "https://tu-api-dominio.com"],
+        : ["'self'", "https://belgrano-norte-online-production.up.railway.app"],
       imgSrc:         ["'self'", "data:", "https:"],
       objectSrc:      ["'none'"],
       frameAncestors: ["'none'"],
@@ -30,7 +30,6 @@ app.use(helmet({
   referrerPolicy:      { policy: 'strict-origin-when-cross-origin' },
 }));
 
-// [SEC-FIX] CORS restringido solo a tu frontend
 const ORIGENES_PERMITIDOS = (process.env.CORS_ORIGINS || 'http://localhost:5173')
   .split(',').map(o => o.trim());
 
@@ -45,10 +44,8 @@ app.use(cors({
   credentials:    true,
 }));
 
-// [SEC-FIX] Límite de tamaño de payload — previene DoS por JSON gigante
 app.use(express.json({ limit: '50kb' }));
 
-// [SEC-FIX] Rate limiting
 const { rateLimit } = require('express-rate-limit');
 
 const limitadorGeneral = rateLimit({
@@ -65,8 +62,6 @@ const limitadorPanel = rateLimit({
   message: { error: 'Demasiadas solicitudes al panel.' },
 });
 
-// [SEC-FIX] Rate limiting estricto para login — máx 10 intentos / 15 min
-// Previene ataques de fuerza bruta sobre las credenciales del panel
 const limitadorLogin = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -77,7 +72,6 @@ const limitadorLogin = rateLimit({
 
 app.use('/api',             limitadorGeneral);
 app.use('/api/panel',       limitadorPanel);
-// [SEC-FIX] El limitador de login va ANTES del mount de la ruta
 app.use('/api/auth/login',  limitadorLogin);
 
 const publicas          = require('./routes/publicas');
@@ -89,7 +83,6 @@ app.use('/api',       publicas);
 app.use('/api/auth',  auth);
 app.use('/api/panel', verificarToken, panel);
 
-// [SEC-FIX] Handler de errores global — nunca exponer stack en producción
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err.message);
   res.status(err.status || 500).json({
