@@ -6,13 +6,11 @@ if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
 
-// ✅ AGREGADO: Validar variables críticas al arranque
-// Si falta alguna, el error es claro en los logs de Railway
-const VARS_REQUERIDAS = ['JWT_SECRET']; // agregá las que uses: DATABASE_URL, etc.
+const VARS_REQUERIDAS = ['JWT_SECRET'];
 const faltantes = VARS_REQUERIDAS.filter(v => !process.env[v]);
 if (faltantes.length > 0) {
   console.error(`[FATAL] Variables de entorno faltantes: ${faltantes.join(', ')}`);
-  process.exit(1); // Falla rápido con mensaje claro en lugar de 500 misterioso
+  process.exit(1);
 }
 
 const app = express();
@@ -26,8 +24,8 @@ app.use(helmet({
       styleSrc:       ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc:        ["'self'", "https://fonts.gstatic.com"],
       connectSrc: isDev
-      ? ["'self'", "http://localhost:5000", "http://localhost:5173"]
-      : ["'self'", "https://belgrano-norte-online.vercel.app"],
+        ? ["'self'", "http://localhost:5000", "http://localhost:5173"]
+        : ["'self'", "https://belgrano-norte-online.vercel.app"],
       imgSrc:         ["'self'", "data:", "https:"],
       objectSrc:      ["'none'"],
       frameAncestors: ["'none'"],
@@ -38,24 +36,22 @@ app.use(helmet({
   referrerPolicy:      { policy: 'strict-origin-when-cross-origin' },
 }));
 
-// ✅ CORREGIDO: Asegurate de que CORS_ORIGINS esté seteada en Railway
-// En Railway dashboard: CORS_ORIGINS=https://belgrano-norte-online-production.up.railway.app
 const ORIGENES_PERMITIDOS = (process.env.CORS_ORIGINS || 'http://localhost:5173')
   .split(',').map(o => o.trim());
 
-console.log('[CORS] Orígenes permitidos:', ORIGENES_PERMITIDOS); // ← para verificar en logs
+console.log('[CORS] Orígenes permitidos:', ORIGENES_PERMITIDOS);
 
+// ✅ CAMBIADO: Permite producción + cualquier preview deploy de Vercel
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin && isDev) return callback(null, true);
+    if (!origin) return callback(null, true);
 
-    // ✅ AGREGADO: En producción, también permitir requests sin origin
-    // (Postman, health checks de Railway, etc.)
-    if (!origin && !isDev) return callback(null, true);
+    const permitido =
+      ORIGENES_PERMITIDOS.includes(origin) ||
+      /^https:\/\/belgrano-norte-online(-[a-z0-9]+)*\.vercel\.app$/.test(origin);
 
-    if (ORIGENES_PERMITIDOS.includes(origin)) return callback(null, true);
+    if (permitido) return callback(null, true);
 
-    // ✅ CORREGIDO: Log del origen rechazado para debuggear
     console.warn('[CORS] Origen rechazado:', origin);
     callback(new Error('Origen no permitido por CORS'));
   },
@@ -94,10 +90,8 @@ app.use('/api',             limitadorGeneral);
 app.use('/api/panel',       limitadorPanel);
 app.use('/api/auth/login',  limitadorLogin);
 
-// ✅ AGREGADO: Health check que Railway puede usar para verificar que el servidor vive
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// ✅ AGREGADO: Envolver los requires en try/catch para detectar errores de carga
 let publicas, panel, auth, verificarToken;
 try {
   publicas        = require('./routes/publicas');
@@ -113,7 +107,6 @@ app.use('/api',       publicas);
 app.use('/api/auth',  auth);
 app.use('/api/panel', verificarToken, panel);
 
-// ✅ AGREGADO: Ruta catch-all para debuggear rutas inexistentes
 app.use((req, res, next) => {
   console.warn(`[404] ${req.method} ${req.path}`);
   res.status(404).json({ error: 'Ruta no encontrada' });
@@ -129,5 +122,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
-  console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`); // ✅ AGREGADO
+  console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
 });
