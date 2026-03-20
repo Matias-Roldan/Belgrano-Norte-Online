@@ -17,7 +17,7 @@ const CSP_POLICY = [
   "font-src 'self' https://fonts.gstatic.com",
   isDev
     ? "connect-src 'self' http://localhost:5000"
-    : "connect-src 'self' https://tu-api-dominio.com",
+    : "connect-src 'self' https://belgrano-norte-online-production.up.railway.app",
   "img-src 'self' data: https:",
   "object-src 'none'",
   "base-uri 'self'",
