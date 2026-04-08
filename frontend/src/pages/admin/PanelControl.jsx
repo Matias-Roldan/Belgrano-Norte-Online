@@ -223,7 +223,7 @@ function PanelDashboard({ onCerrarSesion }) {
             <div style={s.headerTitulo}>Panel de Control</div>
             <div style={s.headerSub}>Belgrano Norte · Solo operadores</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexShrink: 0 }}>
             <div style={s.horaChip} aria-label={`Hora actual: ${hora}`}>{hora}</div>
             {/* [SEC-FIX] Botón de cierre de sesión explícito */}
             <button
@@ -331,18 +331,18 @@ const s = {
   root: { backgroundColor: T.bgPage, minHeight:'100vh', fontFamily:"'Source Sans 3', sans-serif", color: T.textPri },
   header: { background: T.bgWhite, boxShadow:`0 2px 8px ${T.sombra}`, position:'sticky', top:0, zIndex:100 },
   headerInner: { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'1rem 1.5rem', maxWidth:'720px', margin:'0 auto', width:'100%' },
-  btnVolver: { background: T.bgWhite, border:`2px solid ${T.borde}`, color: T.textSub, padding:'0.6rem 1rem', borderRadius:'8px', cursor:'pointer', fontSize:'0.95rem', fontWeight:'600', whiteSpace:'nowrap', minHeight:'44px' },
-  headerCentro: { textAlign:'center' },
+  btnVolver: { background: T.bgWhite, border:`2px solid ${T.borde}`, color: T.textSub, padding:'0.6rem 1rem', borderRadius:'8px', cursor:'pointer', fontSize:'0.95rem', fontWeight:'600', whiteSpace:'nowrap', minHeight:'44px', flexShrink:0 },
+  headerCentro: { textAlign:'center', flex:1, minWidth:0 },
   headerTitulo: { fontSize:'1.3rem', fontWeight:'700', color: T.textPri, fontFamily:"'Lora', serif", lineHeight:1.1 },
   headerSub:    { fontSize:'0.75rem', color: T.textSub, marginTop:'2px' },
-  horaChip:     { fontSize:'1.4rem', fontWeight:'700', color: T.red, fontFamily:"'Lora', serif", fontVariantNumeric:'tabular-nums', minWidth:'60px', textAlign:'right' },
+  horaChip:     { fontSize:'1.4rem', fontWeight:'700', color: T.red, fontFamily:"'Lora', serif", fontVariantNumeric:'tabular-nums', minWidth:'60px', textAlign:'right', flexShrink:0 },
   headerLine:   { height:'3px', background:`linear-gradient(90deg, ${T.slate}, ${T.blue})` },
   main: { maxWidth:'720px', margin:'0 auto', padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem' },
   avisoAdmin: { display:'flex', alignItems:'center', gap:'0.9rem', background: T.amarilloLight, border:`1.5px solid ${T.amarilloBorde}`, borderRadius:'12px', padding:'1rem 1.2rem' },
   avisoAdminTit: { fontSize:'0.9rem', fontWeight:'700', color: T.amarillo },
   avisoAdminSub: { fontSize:'0.8rem', color:'#9A7D0A', marginTop:'1px' },
   secTitulo: { fontSize:'1.05rem', fontWeight:'600', color: T.textSub, paddingLeft:'0.2rem' },
-  card: { position:'relative', overflow:'hidden', display:'flex', alignItems:'center', gap:'1rem', background: T.bgWhite, border:'2px solid', borderRadius:'16px', padding:'1.2rem 1.2rem 1.2rem 1rem', textAlign:'left', transition:'all 0.2s ease', minHeight:'100px', cursor:'pointer', width:'100%' },
+  card: { position:'relative', overflow:'hidden', display:'flex', alignItems:'center', gap:'1rem', background: T.bgWhite, border:'2px solid', borderRadius:'16px', padding:'1.2rem 1.2rem 1.2rem 1rem', textAlign:'left', transition:'all 0.2s ease', minHeight:'100px', cursor:'pointer', width:'100%', minWidth:0 },
   cardFranja: { position:'absolute', left:0, top:0, bottom:0, width:'5px' },
   cardIcono: { width:'56px', height:'56px', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:'14px' },
   cardTextos: { flex:1, minWidth:0 },
